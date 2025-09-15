@@ -1,6 +1,7 @@
 # PyTorch Geometric (Colab / Linux)
-!pip install torch==2.3.0 torchvision torchaudio
-!pip install torch-geometric
+# !pip install torch==2.3.0 torchvision torchaudio
+# !pip install torch-geometric
+import save_predictions_csv
 import pandas as pd
 import torch
 from torch_geometric.data import Data, InMemoryDataset
@@ -16,9 +17,7 @@ from scipy.stats import pearsonr
 import numpy as np
 
 # Load + Impute
-df = pd.read_csv("train.csv")
-targets = ['Tg','FFV','Tc','Density','Rg']
-
+df = pd.read_csv(".\\input\\neurips-open-polymer-prediction-2025\\train.csv") # change to "train.csv" if needed, for colab
 knn_imputer = KNNImputer(n_neighbors=5)
 df_knn = pd.DataFrame(knn_imputer.fit_transform(df[targets]), columns=targets)
 df_knn = pd.concat([df[['SMILES']], df_knn], axis=1)
@@ -44,6 +43,12 @@ def smiles_to_graph(smiles, y):
 
     y = torch.tensor(y, dtype=torch.float).unsqueeze(0)  # (5,)
     return Data(x=x, edge_index=edge_index, y=y)
+
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+df_knn[targets] = scaler.fit_transform(df_knn[targets])
+
 
 class PolymerDataset(InMemoryDataset):
     def __init__(self, df, transform=None):
@@ -85,7 +90,7 @@ loss_fn = nn.MSELoss()
 
 
 # Training Loop
-for epoch in range(20):
+for epoch in range(50):
     model.train()
     total_loss = 0
     for batch in train_loader:
@@ -121,6 +126,9 @@ for i, t in enumerate(targets):
         print(f"{t}: Pearson R = {r:.3f}")
     else:
         print(f"{t}: Pearson R = constant predictions")
+
+
+# Performance Metrics Calculation
 from sklearn.metrics import mean_squared_error, r2_score
 from scipy.stats import pearsonr
 import numpy as np
@@ -149,3 +157,6 @@ print("\n=== PERFORMANCE METRICS ===")
 print(f"Validation RMSE: {rmse:.4f}")
 print(f"Validation R²: {r2:.4f}")
 print(f"Per-target Pearson R: {per_target_r}")
+
+# Save Predictions
+save_predictions_csv(y_pred, "GNN_predictions.csv")

@@ -5,6 +5,7 @@ from rdkit import DataStructs
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 
+import save_predictions_csv
 import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
@@ -45,7 +46,7 @@ def featurize(smiles_list, radius=2, n_bits=2048):
 # -------------------
 # Load dataset
 # -------------------
-csv_path = ".\\input\\neurips-open-polymer-prediction-2025\\train.csv"
+csv_path = ".\\input\\neurips-open-polymer-prediction-2025\\train.csv" # change to "train.csv" if needed, for colab
 train_df = pd.read_csv(csv_path)
 
 # 1. split off 20% for dev_test
@@ -74,6 +75,7 @@ print(f"Columns:{dev_train.columns}")
 
 X_train = featurize(dev_train['SMILES'].to_list())
 X_val   = featurize(dev_val['SMILES'].to_list())
+
 # -------------------
 # Handle missing targets
 # -------------------
@@ -103,7 +105,6 @@ base_rf = RandomForestRegressor(
     n_jobs=-1
 )
 
-
 model = MultiOutputRegressor(base_rf)
 
 print("Training Random Forest model...")
@@ -120,3 +121,6 @@ r2 = r2_score(y_val, y_pred, multioutput='uniform_average')
 
 print("Validation RMSE:", rmse)
 print("Validation R²:", r2)
+
+
+save_predictions_csv(y_pred, "RF_predictions.csv")
