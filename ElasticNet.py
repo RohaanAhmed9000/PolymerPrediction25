@@ -1,13 +1,41 @@
+from rdkit import Chem
+from rdkit.Chem import AllChem
+import numpy as np
+import pandas as pd
+
 from sklearn.linear_model import ElasticNet
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, r2_score
 from scipy.stats import pearsonr
-import numpy as np
+
+
+# Featurizer (Morgan fingerprints)
+def featurize(smiles_list, radius=2, n_bits=2048):
+    fps = []
+    for s in smiles_list:
+        mol = Chem.MolFromSmiles(s)
+        if mol is None:
+            fps.append(np.zeros((n_bits,)))  # fallback if invalid SMILES
+        else:
+            fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
+            fps.append(np.array(fp))
+    return np.array(fps)
+
+
+# Data prep (assuming dev_train / dev_val already split)
+
+targets = ['Tg', 'FFV', 'Tc', 'Density', 'Rg']
+
+X_train = featurize(dev_train['SMILES'].to_list())
+X_val   = featurize(dev_val['SMILES'].to_list())
+
+y_train = dev_train[targets].to_numpy()
+y_val   = dev_val[targets].to_numpy()
+
 
 # Elastic Net Model
-
 base_en = ElasticNet(alpha=0.1, l1_ratio=0.5, max_iter=10000, random_state=42)
 model = make_pipeline(StandardScaler(), MultiOutputRegressor(base_en))
 
@@ -32,6 +60,7 @@ for i, target in enumerate(targets):
     print(f"  Pred range:  [{y_pred[:, i].min():.3f}, {y_pred[:, i].max():.3f}]")
     print(f"  True range:  [{y_val[:, i].min():.3f}, {y_val[:, i].max():.3f}]")
 
+
 # 2. Safe correlation calculation
 print("\n=== SAFE CORRELATIONS ===")
 r_values_safe = {}
@@ -43,6 +72,7 @@ for i, target in enumerate(targets):
     else:
         r_values_safe[target] = "constant_predictions"
         print(f"{target}: CONSTANT PREDICTIONS (no correlation possible)")
+
 
 # 3. Try different alpha values for problematic targets
 print("\n=== TESTING DIFFERENT ALPHAS ===")
@@ -65,6 +95,7 @@ for alpha in alphas_to_test:
         else:
             print(f"  {target}: still constant")
 
+
 # 4. Individual target models (if multioutput is the issue)
 print("\n=== INDIVIDUAL TARGET MODELS ===")
 individual_results = {}
@@ -81,53 +112,16 @@ for i, target in enumerate(targets):
         individual_results[target] = "still_constant"
         print(f"{target}: still constant (individual model)")
 
-# Performance metrics
 
+# Performance metrics
 mse = mean_squared_error(y_val, y_pred)
 rmse = np.sqrt(mse)
 r2 = r2_score(y_val, y_pred, multioutput='uniform_average')
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
-import numpy as np
-import pandas as pd
-
-from sklearn.linear_model import ElasticNet
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error, r2_score
-from scipy.stats import pearsonr
-
-
-# Featurizer (Morgan fingerprints)
-
-def featurize(smiles_list, radius=2, n_bits=2048):
-    fps = []
-    for s in smiles_list:
-        mol = Chem.MolFromSmiles(s)
-        if mol is None:
-            fps.append(np.zeros((n_bits,)))  # fallback if invalid SMILES
-        else:
-            fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits)
-            fps.append(np.array(fp))
-    return np.array(fps)
-
-
-# Data prep (assuming dev_train / dev_val already split)
-
-targets = ['Tg', 'FFV', 'Tc', 'Density', 'Rg']
-
-X_train = featurize(dev_train['SMILES'].to_list())
-X_val   = featurize(dev_val['SMILES'].to_list())
-
-y_train = dev_train[targets].to_numpy()
-y_val   = dev_val[targets].to_numpy()
 
 from sklearn.impute import KNNImputer
 
 # Handle missing targets
-
 y_train_raw = dev_train[targets].to_numpy()
 y_val_raw   = dev_val[targets].to_numpy()
 

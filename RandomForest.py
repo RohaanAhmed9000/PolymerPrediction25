@@ -87,8 +87,6 @@ from sklearn.impute import KNNImputer
 imputer = KNNImputer(n_neighbors=5)  # finds 5 closest samples
 y_train = imputer.fit_transform(y_train_raw)
 y_val   = imputer.transform(y_val_raw)
-
-
 # imputer = SimpleImputer(strategy="mean")
 # y_train = imputer.fit_transform(y_train_raw)
 # y_val   = imputer.transform(y_val_raw)
@@ -122,5 +120,5 @@ r2 = r2_score(y_val, y_pred, multioutput='uniform_average')
 print("Validation RMSE:", rmse)
 print("Validation R²:", r2)
 
-
+# Save Predictions
 save_predictions_csv(y_pred, "RF_predictions.csv")

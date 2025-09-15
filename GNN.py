@@ -1,6 +1,3 @@
-# PyTorch Geometric (Colab / Linux)
-# !pip install torch==2.3.0 torchvision torchaudio
-# !pip install torch-geometric
 import save_predictions_csv
 import pandas as pd
 import torch
@@ -15,6 +12,7 @@ from torch_geometric.nn import GCNConv, global_mean_pool
 from sklearn.metrics import r2_score
 from scipy.stats import pearsonr
 import numpy as np
+
 
 # Load + Impute
 df = pd.read_csv(".\\input\\neurips-open-polymer-prediction-2025\\train.csv") # change to "train.csv" if needed, for colab
@@ -44,6 +42,8 @@ def smiles_to_graph(smiles, y):
     y = torch.tensor(y, dtype=torch.float).unsqueeze(0)  # (5,)
     return Data(x=x, edge_index=edge_index, y=y)
 
+
+# Standardize targets
 from sklearn.preprocessing import StandardScaler
 
 scaler = StandardScaler()
@@ -75,6 +75,7 @@ class GNNModel(nn.Module):
         x = global_mean_pool(x, batch)
         x = F.relu(self.fc1(x))
         return self.fc2(x)
+
 
 # Training Prep
 train_dataset = PolymerDataset(train_df)
